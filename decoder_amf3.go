@@ -353,6 +353,10 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		for {
 			key, err = d.DecodeAmf3String(r, false)
 			if err != nil {
+				if err.Error() == "amf3 decode: unable to decode string reference and length: amf3 decode: unable to decode reference int: EOF" {
+					err = nil
+					break
+				}
 				return result, Error("amf3 decode: unable to decode dynamic key: %s", err)
 			}
 			if key == "" {
