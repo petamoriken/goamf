@@ -2,9 +2,12 @@ package amf
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"strings"
 	"time"
+
+	errors "github.com/pkg/errors"
 )
 
 // amf3 polymorphic router
@@ -123,7 +126,7 @@ func (d *Decoder) DecodeAmf3String(r io.Reader, decodeMarker bool) (result strin
 	var refVal uint32
 	isRef, refVal, err = d.decodeReferenceInt(r)
 	if err != nil {
-		return "", Error("amf3 decode: unable to decode string reference and length: %s", err)
+		return "", errors.Wrap(err, "amf3 decode: unable to decode string reference and length: %s")
 	}
 
 	if isRef {
@@ -134,7 +137,7 @@ func (d *Decoder) DecodeAmf3String(r io.Reader, decodeMarker bool) (result strin
 	buf := make([]byte, refVal)
 	_, err = r.Read(buf)
 	if err != nil {
-		return "", Error("amf3 decode: unable to read string: %s", err)
+		return "", errors.Wrap(err, "amf3 decode: unable to read string: %s")
 	}
 
 	result = string(buf)
@@ -158,7 +161,7 @@ func (d *Decoder) DecodeAmf3Date(r io.Reader, decodeMarker bool) (result time.Ti
 	var refVal uint32
 	isRef, refVal, err = d.decodeReferenceInt(r)
 	if err != nil {
-		return result, Error("amf3 decode: unable to decode date reference and length: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to decode date reference and length: %s")
 	}
 
 	if isRef {
@@ -173,7 +176,7 @@ func (d *Decoder) DecodeAmf3Date(r io.Reader, decodeMarker bool) (result time.Ti
 	var u64 float64
 	err = binary.Read(r, binary.BigEndian, &u64)
 	if err != nil {
-		return result, Error("amf3 decode: unable to read double: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to read double: %s")
 	}
 
 	result = time.Unix(int64(u64/1000), 0).UTC()
@@ -197,7 +200,7 @@ func (d *Decoder) DecodeAmf3Array(r io.Reader, decodeMarker bool) (result Array,
 	var refVal uint32
 	isRef, refVal, err = d.decodeReferenceInt(r)
 	if err != nil {
-		return result, Error("amf3 decode: unable to decode array reference and length: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to decode array reference and length: %s")
 	}
 
 	if isRef {
@@ -214,7 +217,7 @@ func (d *Decoder) DecodeAmf3Array(r io.Reader, decodeMarker bool) (result Array,
 	var key string
 	key, err = d.DecodeAmf3String(r, false)
 	if err != nil {
-		return result, Error("amf3 decode: unable to read key for array: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to read key for array: %s")
 	}
 
 	if key != "" {
@@ -224,7 +227,7 @@ func (d *Decoder) DecodeAmf3Array(r io.Reader, decodeMarker bool) (result Array,
 	for i := uint32(0); i < refVal; i++ {
 		tmp, err := d.DecodeAmf3(r)
 		if err != nil {
-			return result, Error("amf3 decode: array element could not be decoded: %s", err)
+			return result, errors.Wrap(err, "amf3 decode: array element could not be decoded: %s")
 		}
 		result = append(result, tmp)
 	}
@@ -244,7 +247,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 	// decode the initial u29
 	isRef, refVal, err := d.decodeReferenceInt(r)
 	if err != nil {
-		return nil, Error("amf3 decode: unable to decode object reference and length: %s", err)
+		return nil, errors.Wrap(err, "amf3 decode: unable to decode object reference and length: %s")
 	}
 
 	// if this is a object reference only, grab it and return it
@@ -273,7 +276,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		var cls string
 		cls, err = d.DecodeAmf3String(r, false)
 		if err != nil {
-			return result, Error("amf3 decode: unable to read trait type for object: %s", err)
+			return result, errors.Wrap(err, "amf3 decode: unable to read trait type for object: %s")
 		}
 		trait.Type = cls
 
@@ -282,7 +285,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		for i := uint32(0); i < propLength; i++ {
 			tmp, err := d.DecodeAmf3String(r, false)
 			if err != nil {
-				return result, Error("amf3 decode: unable to read trait property for object: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to read trait property for object: %s")
 			}
 			trait.Properties = append(trait.Properties, tmp)
 		}
@@ -300,17 +303,17 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		case "DSA": // AsyncMessageExt
 			result, err = d.decodeAsyncMessageExt(r)
 			if err != nil {
-				return result, Error("amf3 decode: unable to decode dsa: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to decode dsa: %s")
 			}
 		case "DSK": // AcknowledgeMessageExt
 			result, err = d.decodeAcknowledgeMessageExt(r)
 			if err != nil {
-				return result, Error("amf3 decode: unable to decode dsk: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to decode dsk: %s")
 			}
 		case "flex.messaging.io.ArrayCollection":
 			result, err = d.decodeArrayCollection(r)
 			if err != nil {
-				return result, Error("amf3 decode: unable to decode ac: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to decode ac: %s")
 			}
 
 			// store an extra reference to array collection container
@@ -321,7 +324,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 			if ok {
 				result, err = fn(d, r)
 				if err != nil {
-					return result, Error("amf3 decode: unable to call external decoder for type %s: %s", trait.Type, err)
+					return result, errors.Wrap(err, fmt.Sprintf("amf3 decode: unable to call external decoder for type %s", trait.Type))
 				}
 			} else {
 				return result, Error("amf3 decode: unable to decode external type %s, no handler", trait.Type)
@@ -342,7 +345,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 	for _, key = range trait.Properties {
 		val, err = d.DecodeAmf3(r)
 		if err != nil {
-			return result, Error("amf3 decode: unable to decode object property: %s", err)
+			return result, errors.Wrap(err, "amf3 decode: unable to decode object property: %s")
 		}
 
 		obj[key] = val
@@ -359,14 +362,14 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 					err = nil
 					break
 				}
-				return result, Error("amf3 decode: unable to decode dynamic key: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to decode dynamic key: %s")
 			}
 			if key == "" {
 				break
 			}
 			val, err = d.DecodeAmf3(r)
 			if err != nil {
-				return result, Error("amf3 decode: unable to decode dynamic value: %s", err)
+				return result, errors.Wrap(err, "amf3 decode: unable to decode dynamic value: %s")
 			}
 
 			obj[key] = val
@@ -399,7 +402,7 @@ func (d *Decoder) DecodeAmf3Xml(r io.Reader, decodeMarker bool) (result string, 
 	var refVal uint32
 	isRef, refVal, err = d.decodeReferenceInt(r)
 	if err != nil {
-		return "", Error("amf3 decode: unable to decode xml reference and length: %s", err)
+		return "", errors.Wrap(err, "amf3 decode: unable to decode xml reference and length: %s")
 	}
 
 	if isRef {
@@ -416,7 +419,7 @@ func (d *Decoder) DecodeAmf3Xml(r io.Reader, decodeMarker bool) (result string, 
 	buf := make([]byte, refVal)
 	_, err = r.Read(buf)
 	if err != nil {
-		return "", Error("amf3 decode: unable to read xml string: %s", err)
+		return "", errors.Wrap(err, "amf3 decode: unable to read xml string: %s")
 	}
 
 	result = string(buf)
@@ -441,7 +444,7 @@ func (d *Decoder) DecodeAmf3ByteArray(r io.Reader, decodeMarker bool) (result []
 	var refVal uint32
 	isRef, refVal, err = d.decodeReferenceInt(r)
 	if err != nil {
-		return result, Error("amf3 decode: unable to decode byte array reference and length: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to decode byte array reference and length: %s")
 	}
 
 	if isRef {
@@ -457,7 +460,7 @@ func (d *Decoder) DecodeAmf3ByteArray(r io.Reader, decodeMarker bool) (result []
 	result = make([]byte, refVal)
 	_, err = r.Read(result)
 	if err != nil {
-		return result, Error("amf3 decode: unable to read bytearray: %s", err)
+		return result, errors.Wrap(err, "amf3 decode: unable to read bytearray: %s")
 	}
 
 	d.objectRefs = append(d.objectRefs, result)
@@ -492,7 +495,7 @@ func (d *Decoder) decodeU29(r io.Reader) (result uint32, err error) {
 func (d *Decoder) decodeReferenceInt(r io.Reader) (isRef bool, refVal uint32, err error) {
 	u29, err := d.decodeU29(r)
 	if err != nil {
-		return false, 0, Error("amf3 decode: unable to decode reference int: %s", err)
+		return false, 0, errors.Wrap(err, "amf3 decode: unable to decode reference int: %s")
 	}
 
 	isRef = u29&0x01 == 0
