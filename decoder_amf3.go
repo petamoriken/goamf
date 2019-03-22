@@ -107,7 +107,7 @@ func (d *Decoder) DecodeAmf3Double(r io.Reader, decodeMarker bool) (result float
 
 	err = binary.Read(r, binary.BigEndian, &result)
 	if err != nil {
-		return float64(0), Error("amf3 decode: unable to read double: %s", err)
+		return float64(0), errors.Wrap(err, "amf3 decode: unable to read double")
 	}
 
 	return
@@ -345,7 +345,7 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 	for _, key = range trait.Properties {
 		val, err = d.DecodeAmf3(r)
 		if err != nil {
-			return result, errors.Wrap(err, "amf3 decode: unable to decode object property: %s")
+			return result, errors.Wrap(err, "amf3 decode: unable to decode object property")
 		}
 
 		obj[key] = val
