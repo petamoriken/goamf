@@ -2,10 +2,12 @@ package amf
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/jcoene/gologger"
 	"io"
+
+	logger "github.com/jcoene/gologger"
+
+	errors "github.com/pkg/errors"
 )
 
 var log logger.Logger = *logger.NewLogger(logger.LOG_LEVEL_WARN, "amf")

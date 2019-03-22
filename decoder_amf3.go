@@ -3,6 +3,7 @@ package amf
 import (
 	"encoding/binary"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -353,7 +354,8 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		for {
 			key, err = d.DecodeAmf3String(r, false)
 			if err != nil {
-				if err.Error() == "amf3 decode: unable to decode string reference and length: amf3 decode: unable to decode reference int: EOF" {
+				// ignore EOF errors
+				if strings.HasSuffix(err.Error(), "EOF") {
 					err = nil
 					break
 				}
