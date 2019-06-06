@@ -369,6 +369,11 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 			}
 			val, err = d.DecodeAmf3(r)
 			if err != nil {
+				// ignore EOF errors
+				if strings.HasSuffix(err.Error(), "EOF") {
+					err = nil
+					break
+				}
 				return result, errors.Wrap(err, "amf3 decode: unable to decode dynamic value")
 			}
 
