@@ -357,24 +357,24 @@ func (d *Decoder) DecodeAmf3Object(r io.Reader, decodeMarker bool) (result inter
 		for {
 			key, err = d.DecodeAmf3String(r, false)
 			if err != nil {
-				// ignore EOF errors
-				if strings.HasSuffix(err.Error(), "EOF") {
-					err = nil
-					break
+				// ignore error
+				if !strings.HasSuffix(err.Error(), "EOF") {
+					fmt.Printf("Warning: amf3 decode: unable to decode dynamic key %s\n", err.Error())
 				}
-				return result, errors.Wrap(err, "amf3 decode: unable to decode dynamic key")
+				err = nil
+				break
 			}
 			if key == "" {
 				break
 			}
 			val, err = d.DecodeAmf3(r)
 			if err != nil {
-				// ignore EOF errors
-				if strings.HasSuffix(err.Error(), "EOF") {
-					err = nil
-					break
+				// ignore error
+				if !strings.HasSuffix(err.Error(), "EOF") {
+					fmt.Printf("Warning: amf3 decode: unable to decode dynamic value %s\n", err.Error())
 				}
-				return result, errors.Wrap(err, "amf3 decode: unable to decode dynamic value")
+				err = nil
+				break
 			}
 
 			obj[key] = val
